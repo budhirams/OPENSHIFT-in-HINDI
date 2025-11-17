@@ -1,0 +1,15 @@
+✅ Step 3: सीधे अपने user का cluster में access चेक करें
+
+आप ये भी check कर सकते हैं:
+
+oc adm policy who-can create pods
+
+
+या specific:
+
+oc describe clusterrolebindings | grep -i rahul
+
+
+और:
+
+oc describe rolebinding -n <namespace> | grep -i rahul
