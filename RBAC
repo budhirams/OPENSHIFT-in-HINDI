@@ -1,0 +1,89 @@
+RBAC  [ role based access control ]
+---------------------------------------------------------
+
+oc get users
+
+
+
+
+
+
+OC POLICY ------ IS USED FOR NORMAL ROLE
+OC ADM POLICY  ------ IS USED TO CLUSTER ROLE
+
+PODS, SERVICES
+verbs,get,list,describe
+
+perticular namespace
+-----------------------------
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+    namespace: hello-web
+    name: pod-svc-view
+rules:
+- apiGroups: [""]
+  resources: ["pods","services"]
+  verbs: ["get","list","watch","describe"]
+
+
+ClusterRole
+-------------------------------
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+     name: cluster-pod-svc-view
+rules:
+- apiGrous: [""]
+  resources: ["pods","services"]
+  verbs: ["get","list","watch","describe"]
+
+
+oc get nodes
+
+oc apply -f project-pod-svc-role.yaml
+
+oc apply -f cluster-pod-svc-role.yaml
+
+cat cluster-pod-svc-role.yaml
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+     name: cluster-pod-svc-view
+rules:
+- apiGrous: [""]
+  resources: ["pods","services"]
+  verbs: ["get","list","watch","describe"]
+
+oc adm policy add-cluster-role-to-user cluster-pod-svc-view jane
+oc login -u jane -p networknuts
+oc get pod -A
+oc get svc -A
+
+jane user have cluster level permission 
+
+
+
+---------------------------- second level permission me namespace level hi permission tha -------------------------------------
+cat project-pod-svc-role.yaml
+
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+    namespace: hello-web
+    name: pod-svc-view
+rules:
+- apiGroups: [""]
+  resources: ["pods","services"]
+  verbs: ["get","list","watch","describe"]
+
+
+perticular namespace me ---------------- oc policy hi chalta hai 
+cluster level me       ----------------- oc adm policy      chalta hai 
+
+oc policy remove-role-from-user pod-svc-view john
+oc policy add-role-to-user pod-svc-view john --role-namespace hello-web
+oc get pod -A      -------------- yaha work nhin krega 
+oc get pods -n hello-web
