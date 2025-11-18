@@ -1,0 +1,147 @@
+Banking Example: Edge Route + Hostname (Complete Setup)
+
+मान लीजिए कि बैंक की NetBanking application OpenShift पर deploy करनी है।
+
+URL चाहिए:
+
+https://netbanking.mybank.com
+
+
+इसलिए हमें यह 3 चीज़ें बनानी होंगी:
+
+1️⃣ Deployment
+2️⃣ Service
+3️⃣ Route (Edge + hostname)
+
+✅ Step 1: Deployment (Application Pod बनाना)
+
+हम example के लिए nginx use करेंगे (banking UI की जगह)।
+
+deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: netbanking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: netbanking
+  template:
+    metadata:
+      labels:
+        app: netbanking
+    spec:
+      containers:
+      - name: netbanking
+        image: nginx
+        ports:
+        - containerPort: 80
+
+
+Apply:
+
+oc apply -f deployment.yaml
+
+
+Check:
+
+oc get pods
+
+✅ Step 2: Service बनाना (Pod को cluster के अंदर expose करना)
+
+service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: netbanking-service
+spec:
+  selector:
+    app: netbanking
+  ports:
+  - port: 80
+    targetPort: 80
+
+
+Apply:
+
+oc apply -f service.yaml
+
+
+Check:
+
+oc get svc
+
+🏦 अब Banking Scenario शुरू होता है — Edge Route
+Banking URL चाहिए:
+https://netbanking.mybank.com
+
+
+DNS में यह hostname OpenShift router पर already point होता है।
+
+✅ Step 3: Edge Route + Hostname बनाना
+
+यह banking में सबसे common है।
+
+Command:
+
+oc create route edge netbanking-route \
+  --service=netbanking-service \
+  --port=80 \
+  --hostname=netbanking.mybank.com
+
+
+👉 यह एक Edge-secured URL बनाएगा
+👉 SSL termination सिर्फ Router पर होगा
+👉 Backend Pod को traffic HTTP में जाएगा
+
+Check route:
+
+oc get route
+
+
+Output:
+
+netbanking-route   netbanking.mybank.com   edge   netbanking-service
+
+🚦 Traffic Flow (Bank के हिसाब से)
+1) Customer Browser
+
+HTTPS request भेजता है:
+
+https://netbanking.mybank.com
+
+2) OpenShift Router
+
+✔ SSL certificate check करता है
+✔ Traffic decrypt करता है
+✔ अब internal request HTTP बन जाती है
+
+3) Router → Pod
+
+HTTP traffic netbanking-service → netbanking Pod तक जाता है
+
+4) Pod Response → Router
+
+Router response को दुबारा encrypt करता है (HTTPS)
+
+5) Router → Browser
+
+Browser को secure response वापस मिलता है
+
+🔐 क्यों Banking में Edge Route उपयोग होता है?
+कारण	Explanation
+SSL certificate एक जगह manage होता है	Pod पर certificate नहीं लगाना पड़ता
+Performance अच्छा रहता है	Pod को SSL का load नहीं
+Internal network secure होता है	इसलिए HTTP चल सकता है
+Banking UI हल्का और fast रहता है	Router decryption करता है
+🔧 Complete Commands Recap
+oc apply -f deployment.yaml
+oc apply -f service.yaml
+
+oc create route edge netbanking-route \
+  --service=netbanking-service \
+  --port=80 \
+  --hostname=netbanking.mybank.com
