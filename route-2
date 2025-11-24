@@ -1,0 +1,142 @@
+oc new-app --image=nginx --name=nginx-app
+oc get pods
+
+oc get svc
+NAME               TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)       AGE
+nginx-app         ClusterIP      10.217.5.39        <none>           80/TCP        16s
+
+तो OpenShift Service अपने आप बनाता है, क्योंकि image में port 80 एक्सपोज होता है।
+
+लेकिन यह सिर्फ क्लस्टर के अंदर access होता है।
+Browser से या इंटरनेट से सीधे नहीं पहुँचा जा सकता।
+
+oc get routes
+
+No resources found in app-project namespace.   
+
+oc create route edge nginx-app --service nginx-app
+
+oc create route edge nginx-app ...
+                       ↑
+               यह route का नाम है
+
+
+Route → Service को ट्रैफिक भेजती है
+Service → Pod को ट्रैफिक भेजती है
+
+$ oc get routes
+
+NAME                HOST/PORT                         PATH            SERVICES          PORT      TERMINATION       WILDCARD
+nginx-app  nginx-app-app-project.apps-crc.testing                    nginx-app         80-TCP       edge              None
+
+You can brouse this 
+https://nginx-app-app-project.apps-crc.testing 
+
+curl https://nginx-app-app-project.apps-crc.testing 
+
+
+oc delete route nginx-app
+
+oc get svc
+NAME               TYPE           CLUSTER-IP      EXTERNAL-IP       PORT(S)       AGE
+nginx-app         ClusterIP      10.217.5.39        <none>           80/TCP        16s
+
+oc delete svc nginx-app
+
+oc delete deployment nginx-app
+
+----------------------------------------------------------------------------------------------------------------
+
+ls
+app.config
+
+openssl genrsa -out app.key 2048
+ls 
+app.config   app.key
+
+opessl req -new -key app.key -out app.csr -config app.config
+ls 
+app.config app.key app.csr
+
+openssl -req -x509 -nodes -new -key app.key -out app.crt -config app.config
+
+ls
+app.config app.crt app.csr app.key
+
+openssl x509 -sha256 -CAcreateserial -req -days 365 -in app.csr -extfile app.config -CA app.crt -CAkey app.key -out main.crt
+
+app.config app.crt app.csr app.key main.crt
+
+oc create secret tls nginx-secret --cert main.crt --key app.key 
+
+oc get secret 
+NAME                     TYPE                       DATA                  AGE
+nginx-secret             kubernetes.io/tls          2                      4s
+
+vim deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+     name: nginx-app
+spec: 
+   template:
+      metadata:
+          labels: 
+             app: nginx
+      spec:
+         containers:
+            - name: nginx
+              image: nginx
+              ports:
+                - containerPort: 8080
+              volumeMounts:
+                  - name: nginx-secret-file
+                    mountPath: /usr/local/etc/ssl/certs
+                    readonly: true
+         volumes:
+             - name: nginx-secret-file
+               secret:
+                   secretName: nginx-secret
+selector:
+     matchLabels:
+          app: nginx
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+    name: nginx-app
+spec:
+   selector:
+        app: nginx
+   ports:
+     - name: https
+       port: 8443
+       targetPort: 8443
+       protocol: TCP
+     - name: http
+       port: 80
+       targetPort: 8080
+       protocol: TCP
+
+
+
+oc get pods
+
+NAME                          READY                      STATUS                        RESTART            AGE
+nginx-app-bbf74bf87-7fvv7     1/1                        Running                          0                9s
+
+oc get deployment
+NAME                   READY                  UP-TO-DATE              AVAILABLE             AGE
+nginx-app                1/1                      1                      1                   20s
+
+oc get svc 
+NAME               TYPE             CLUSTER-IP                 EXTERNAL-IP         PORT(S)               AGE
+nginx-app        Cluster-IP         10.217.4.190                 <none>           8443/TCP,80/TCP         27s
+
+oc describe pod nginx-app-bbf74bf87-7fvv7 | grep -A4 Mounts
+    Mounts:
+       /usr/local/etc/ssl/certs  from-secret-file   (rw)
+       
+oc create route passthrough nginx-app   --service   nginx-app    --port 8443      
