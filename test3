@@ -1,0 +1,7 @@
+[root@cmpicashprojenkinssit CMP-TEST]# openssl rsa -noout -modulus -in cmpgov_sbiuat_bank_in_private.key | openssl md5
+(stdin)= e4efdeedde22e2917c3e8d2a82521098
+[root@cmpicashprojenkinssit CMP-TEST]#
+[root@cmpicashprojenkinssit CMP-TEST]# openssl x509 -noout -modulus -in cmpgov_sbiuat_bank_in.cer | openssl md5
+unable to load certificate
+139898565867328:error:0909006C:PEM routines:get_name:no start line:crypto/pem/pem_lib.c:745:Expecting: TRUSTED CERTIFICATE
+(stdin)= d41d8cd98f00b204e9800998ecf8427e
