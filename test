@@ -1,0 +1,14 @@
+[root@cmpicashprojenkinssit CMP-TEST]# openssl pkcs12 -export -out cmp.sbi.bank.in.p12 -inkey cmpgov_sbiuat_bank_in_private.key  -in combined.cer
+No certificate matches private key
+[root@cmpicashprojenkinssit CMP-TEST]# ll
+total 52
+-rw-r--r-- 1 root root  1180 Nov 24 19:36 cmpgov_sbiuat_bank_in.cer
+-rw-r--r-- 1 root root  1704 Nov 24 19:36 cmpgov.sbiuat.bank.in.key
+-rw-r--r-- 1 root root  1704 Nov 24 19:36 cmpgov_sbiuat_bank_in_private.key
+-rw-r--r-- 1 root root  2538 Nov 24 19:36 cmpgov_sbiuat_bank_in.txt
+-rw-r--r-- 1 root root  4400 Nov 24 19:51 combined.cer
+-rw-r--r-- 1 root root  1904 Nov 24 19:36 DigiCertEVRSACAG2.cer
+-rw-r--r-- 1 root root  1316 Nov 24 19:36 DigiCertGlobalRootG2.cer
+-rw-r--r-- 1 root root   333 Nov 24 19:36 new-csr-21Nov.txt
+-rw-r--r-- 1 root root 13491 Nov 24 19:36 scfu_p12_steps.txt
+-rw-r--r-- 1 root root     0 Nov 24 18:55 test.txt
