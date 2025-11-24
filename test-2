@@ -1,0 +1,7 @@
+[root@cmpicashprojenkinssit CMP-TEST]# openssl rsa -noout -in cmpgov_sbiuat_bank_in_private.key | openssl md5
+(stdin)= d41d8cd98f00b204e9800998ecf8427e
+[root@cmpicashprojenkinssit CMP-TEST]#
+[root@cmpicashprojenkinssit CMP-TEST]# openssl rsa -noout -in cmpgov_sbiuat_bank_in.cer | openssl md5
+unable to load Private Key
+140074914944832:error:0909006C:PEM routines:get_name:no start line:crypto/pem/pem_lib.c:745:Expecting: ANY PRIVATE KEY
+(stdin)= d41d8cd98f00b204e9800998ecf8427e
