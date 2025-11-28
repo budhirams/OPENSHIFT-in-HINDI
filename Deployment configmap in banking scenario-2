@@ -1,0 +1,116 @@
+🏦 BANKING CONFIGMAP PRACTICAL — SINGLE MICRO-SERVICE (Simple & Clear)
+
+मान लो Account Service चल रही है।
+Banking domain me Account Service kya karti है?
+
+✔ Customer account details
+✔ Balance
+✔ Transactions
+✔ KYC validation
+✔ Daily limit rules
+
+Ye saari banking settings ConfigMap me aayengi.
+
+⭐ STEP 1 — Banking Config File Create (Real Example)
+
+Server pe ek file बनाते हैं (banking settings):
+
+mkdir -p /home/student/banking/
+
+
+cat > /home/student/banking/account.properties <<EOF
+ACCOUNT_API_VERSION=v1
+DAILY_TRANSFER_LIMIT=200000
+ENABLE_KYC=true
+BANK_SUPPORT=1800-123-456
+EOF
+
+
+cat /home/student/banking/account.properties
+
+
+⭐ STEP 2 — ConfigMap Create (file से)
+oc create configmap account-config \
+  --from-file=/home/student/banking/account.properties \
+  -n banking
+
+oc get cm -n banking
+oc describe cm account-config -n banking
+
+
+
+⭐ STEP 3 — Secret Create (Banks always store passwords in Secret)
+oc create secret generic account-secret \
+  --from-literal=DB_USER=admin \
+  --from-literal=DB_PASS=Bank@123 \
+  -n banking
+
+
+oc get secret -n banking
+
+
+⭐ STEP 4 — Deployment Create (Account Service)
+
+👇 यह सबसे important है
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: account-service
+  namespace: banking
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: account-service
+  template:
+    metadata:
+      labels:
+        app: account-service
+    spec:
+      containers:
+      - name: account-container
+        image: nginx
+
+        # ConfigMap values expose as ENV
+        envFrom:
+        - configMapRef:
+            name: account-config
+
+        # Secret values expose as ENV
+        - secretRef:
+            name: account-secret
+
+        # ConfigMap file mount
+        volumeMounts:
+        - name: account-config-vol
+          mountPath: /bank-config
+
+      volumes:
+      - name: account-config-vol
+        configMap:
+          name: account-config
+
+oc apply -f account-deploy.yaml
+
+
+oc get pod -n banking
+
+
+oc exec -it <pod-name> -n banking -- sh
+
+cd /bank-config
+ls
+cat account.properties
+
+You should see:
+
+ACCOUNT_API_VERSION=v1
+DAILY_TRANSFER_LIMIT=200000
+ENABLE_KYC=true
+BANK_SUPPORT=1800-123-456
+
+
+✔ ENV variables check (ConfigMap + Secret)
+env | grep ACCOUNT
+env | grep DB_
