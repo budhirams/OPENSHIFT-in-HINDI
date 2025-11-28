@@ -1,0 +1,171 @@
+Banking (या किसी भी enterprise production) environment में ConfigMap का use बहुत अलग होता है.
+Waha simple HTML file mount नहीं करते — वहाँ application configuration, URLs, feature flags, policies जैसी important cheezein store होती हैं।
+
+मैं नीचे real banking examples दे रहा हूँ 👇
+🏦 Banking Environment में ConfigMap क्या हो सकता है? (Real Use Cases)
+✅ 1. API URLs / Endpoints
+
+हर bank के पास अलग microservices होते हैं।
+Example ConfigMap:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: banking-config
+data:
+  ACCOUNT_SERVICE_URL: "https://accounts.prod.bank.com"
+  PAYMENT_SERVICE_URL: "https://payments.prod.bank.com"
+  FRAUD_SERVICE_URL: "https://fraud.prod.bank.com"
+
+
+✅ 2. Logging Configuration
+
+Banks heavy logging करते हैं (SIEM tools: Splunk, ELK etc.)
+data:
+  LOG_LEVEL: "INFO"
+  LOG_FORMAT: "JSON"
+
+✅ 3. Feature Flags (Enable/Disable features)
+
+Example:
+data:
+  ENABLE_UPI: "true"
+  ENABLE_NETBANKING: "false"
+
+✅ 4. Database Settings (Non-secret part only)
+
+⚠ Password कभी ConfigMap में नहीं होता (Secret में होता है)
+data:
+  DB_HOST: "db.prod.bank.local"
+  DB_PORT: "5432"
+  DB_NAME: "customerdb"
+
+✅ 5. Rules & Policies (AML/KYC/Compliance)
+data:
+  KYC_MIN_AGE: "18"
+  MAX_DAILY_TRANSFER_LIMIT: "200000"
+
+✅ 6. Service Configuration (Timeouts, Retries)
+data:
+  TIMEOUT: "30s"
+  RETRY_COUNT: "3"
+
+🚫 Banking environment me ConfigMap me kya nahi hota?
+
+Password ❌
+
+Certificates ❌
+
+Tokens ❌
+
+Private keys ❌
+
+Account PIN ❌
+
+Customer sensitive data ❌
+
+Ye sab Secrets me hota है, ConfigMap me नहीं।
+
+
+
+🏦 BANKING-DOMAIN CONFIGMAP PRACTICAL (END-TO-END)
+
+Isme hum create karenge:
+
+✔ Banking-style config file (example: API URLs, limits)
+✔ Usse ConfigMap banayenge
+✔ Deployment me use karenge
+✔ Pod ke andar bank config verify karenge
+
+🔹 PART 1 — Banking configuration file create karo
+
+Banks microservices me mostly JSON/Properties file hoti hai.
+
+Example file:
+
+mkdir -p /home/student/banking/
+
+cat > /home/student/banking/app-config.properties <<EOF
+ACCOUNT_SERVICE_URL=https://accounts.prod.bank.com
+PAYMENT_GATEWAY=https://payment.prod.bank.com
+MAX_DAILY_TRANSFER_LIMIT=200000
+KYC_REQUIRED=true
+CUSTOMER_SUPPORT=1800-123-456
+EOF
+
+
+Check:
+
+cat /home/student/banking/app-config.properties
+
+🔹 PART 2 — Banking ConfigMap create karna
+oc create configmap banking-config \
+  --from-file=/home/student/banking/app-config.properties \
+  -n publish
+
+oc get cm -n publish
+oc describe cm banking-config -n publish
+
+
+🔹 PART 3 — Banking Application ka Deployment (simple)
+
+bank-app.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bank-app
+  namespace: publish
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bank-app
+  template:
+    metadata:
+      labels:
+        app: bank-app
+    spec:
+      containers:
+      - name: bank-app
+        image: nginx
+
+oc apply -f bank-app.yaml
+
+
+🔹 PART 4 — ConfigMap ko Deployment me mount karna
+
+Banking me mounted configs mostly /opt/app/config/ ya /config folder me hoti hai.
+
+Mount path use karenge: /bank-config
+
+oc set volume deploy/bank-app \
+  --add \
+  --name=bank-config-vol \
+  --type=configmap \
+  --configmap-name=banking-config \
+  --mount-path=/bank-config \
+  -n publish
+
+
+🔹 PART 5 — Pod ke andar jaake verify karo
+
+Pod list:
+
+oc get pod -n publish
+
+
+Enter inside:
+
+oc exec -it <pod-name> -n publish -- sh
+
+cd /bank-config
+ls
+cat app-config.properties
+Output (Real Banking style):
+
+ACCOUNT_SERVICE_URL=https://accounts.prod.bank.com
+PAYMENT_GATEWAY=https://payment.prod.bank.com
+MAX_DAILY_TRANSFER_LIMIT=200000
+KYC_REQUIRED=true
+CUSTOMER_SUPPORT=1800-123-456
