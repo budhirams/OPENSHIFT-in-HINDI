@@ -1,0 +1,62 @@
+create a "configmap" named "web-cm" in "publish" project from the file, file location is "/home/student/web/index.html"
+you can find a "web" deployment in "publish" project and the deployment should use the configmap "web-cm" and the content should
+be availabe under "/messages"
+
+cat /home/student/web/index.html
+web content
+
+oc create configmap web-cm --from-file=/home/student/web/index.html
+
+oc get configmap
+
+NAME                    DATA                AGE
+web-cm                    1                  7s
+
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: publish
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+        - name: web
+          image: nginx
+          ports:
+            - containerPort: 80
+
+
+oc get deploy
+NAME              READY                UP-TO-DATE              AVAILABLE              AGE
+web                1/1                      1                      1                   3m27s
+
+oc get pod
+NAME                             READY                  STATUS                RESTARTS            AGE
+web-65bc5d5d58-ndcp5             1/1                    Running                  0                 3m32s
+
+oc set volume  deploy/web    --add    --name    configmap-pvc  --type  configmap    --configmap-name web-cm  --mount-path /message
+
+oc get pod
+
+NAME                             READY                  STATUS                RESTARTS            AGE
+web-6869c9bcd7-9zq4l             1/1                    Running                  0                 6s
+
+oc exec -it web-6869c9bcd7-9zq4l sh 
+
+sh-4.4$ cd /message
+ls
+index.html
+cat index.html
+web content
+
+
