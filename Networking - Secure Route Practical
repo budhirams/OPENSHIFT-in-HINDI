@@ -1,0 +1,102 @@
+✅ Networking - Secure Route Practical (Hindi + Practical Steps)
+
+Scenario:
+आपके पास business प्रोजेक्ट में एक deployment है: marketing
+और यह एक unsecured route से expose किया गया है: marketing-route
+
+आपको:
+✔ SSL Certificate + Key generate करना है
+✔ Route को secure बनाना है (Edge TLS termination)
+✔ ऐप URL सिर्फ HTTPS से open होगा:
+https://webapplication.apps.domain1.exampledomain.com
+
+⭐ Step 1 — Existing Resources Check (Verify Deployment, Service, Route)
+oc project business
+oc get all
+
+Output जैसा आपने दिया है:
+
+pod/marketing-d47f96bc-jl9h6     Running
+service/marking-svc              80/TCP
+route/marketing-route            edge unsecured (None)
+
+इसका मतलब route अभी unencrypted (HTTP) है।
+
+⭐ Step 2 — cert-manager.sh Script खोजें
+
+आपको cert-manager script चलानी है जो certificate generate करती है।
+
+find / -name "cert-manager.sh"
+
+मान लो script यहाँ मिली:
+/root/cer-manager/cert-manager.sh
+
+cp /root/cer-manager/cert-manager.sh .
+chmod +x cert-manager.sh
+
+
+⭐ Step 3 — SSL Certificate और Key Generate करना
+
+script चलाओ:
+
+./cert-manager.sh
+
+जो details देनी हैं:
+
+Common Name (CN): webapplication.apps.domain1.exampledomain.com
+Organization Unit (OU): IT
+Organization Name (O): HAT
+Locality Name (L): California
+State Name (ST): NV
+Country Name (C): US
+
+
+इससे नीचे दो फाइलें generate होंगी:
+webapplication.apps.domain1.exampledomain.com.crt
+webapplication.apps.domain1.exampledomain.com.key
+ये certificate और private key हैं।
+
+⭐ Step 4 — पुराना unsecured Route delete करें
+oc delete route marketing-route -n business
+
+
+⭐ Step 5 — नया Secure Route बनाना (HTTPS + Edge Termination)
+
+अब नया secure route create करेंगे।
+YAML के साथ भी कर सकते हैं, पर CLI आसान है।
+
+✔ Method 1: CLI से Secure Route बनाना
+oc create route edge marketing-route \
+--service=marking-svc \
+--cert=webapplication.apps.domain1.exampledomain.com.crt \
+--key=webapplication.apps.domain1.exampledomain.com.key \
+--hostname=webapplication.apps.domain1.exampledomain.com
+
+
+यह route अब encrypted हो जाएगा।
+
+⭐ Step 6 — Verify Secure Route
+oc get route marketing-route
+
+आपको ऐसा दिखेगा:
+
+HOST/PORT: webapplication.apps.domain1.exampledomain.com
+TLS TERMINATION: edge
+CERTIFICATE: uploaded
+
+⭐ Step 7 — Application Access
+
+ब्राउज़र में खोलें:
+
+https://webapplication.apps.domain1.exampledomain.com
+
+
+अब connection encrypted है।
+
+
+🔹 "Edge Termination" क्या है?
+
+OpenShift router SSL decrypt करता है।
+Backend app HTTP पर रहती है।
+
+Client → HTTPS → OpenShift Router → HTTP → Pod
