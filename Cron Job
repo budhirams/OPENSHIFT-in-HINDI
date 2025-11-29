@@ -1,0 +1,39 @@
+--------------------------------------- Cron Job --------------------------------------------------------
+
+create a cron job using the image "bitnami/nginx"
+Latest with the following requirements.
+The cron job name is "job-runner"
+The cron job runs at "04:05 on the 2nd day of each month"
+The successful job history limit is 14
+The service account and service account name is "trigger-sa"
+The cron job runs in the project called "scheduler"
+
+-------------------------------------------------------
+
+
+oc login -u emma -p emma123
+oc whoami --show-console
+open the console
+workloads
+     cron job 
+         Project:scheduler
+                     Create CronJob
+
+-----------------------------Yaha aapko ek sample mil jayega aap add/edit kr sakten hai ----------------------------------
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+      name: job-runner
+      namespace: scheduler
+spec:
+    schedule: '5 4 2 * *'
+    jobTemplate:
+       spec:
+         template:
+            spec:
+              serviceAccountName: trigger-sa
+              containers:
+                   - name: job-runner
+                     image: bitnami/ngix
+              restartPolicy: OnFailure
+     successfulJobsHistoryLimit: 14
