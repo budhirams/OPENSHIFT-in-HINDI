@@ -1,0 +1,57 @@
+------------------------------- Mount Storage - PV and PVC ---------------------------------------------
+An NFS-backend storage class is already configured.
+
+Using details from this storage class, create a PersistentVolume(PV) with the following specifications:
+Name: wev-pv
+Access Mode: ReadOnlyMany
+size: 1Gi
+Reclaim Policy: same as the storage class
+path is: /exports-ocp4/page
+
+
+Next, create a PersistentVolumeClaim(PVC) with:
+Name: web-pvc, Size: same as the PV (1Gi)
+Access Mode: same as the PV (ReadOnlyMany)
+
+
+Deploy the application with thease requirements:
+
+it resides in a project named "webserver"
+Deployment name: "web-landing"
+Uses the image: registry.ocp4.example.com:8443/redhattraining/hello-world-nginx:v1.0
+
+Mount path for Nginx: /usr/share/nginx/html
+Replica count: 3
+
+Accessible at: https:://exoplanets-declarative-manifests.apps.ocp4.example.com
+
+url se dikh rha hai ye hostname hai : exoplanets-declarative-manifests.apps.ocp4.example.com
+
+
+------------------------------- To solve this proble using trick ----------------------------------------------------
+
+First create deployment
+after create service
+after that create route
+
+------------ now we need to replace default page with index.html page , that is loacated in nfs server-----------------
+
+ye bol rha create pv and pvc from storage class 
+
+main ek test pvc create krta hun usme edit kr dunga , yah dynamic storage class hai so it automatically ek pv create kr dega
+it get easily nfs server ip and export path
+
+so lets create a test-pvc first 
+
+storage
+   PersistentVolumeClaims
+
+ye default 
+serverip
+defaultpath
+relaimpolicy assign kr dega    that is enough to solve pv
+
+not go to storage and create pv
+
+
+
