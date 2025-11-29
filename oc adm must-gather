@@ -1,0 +1,23 @@
+oc whoami
+emma
+
+oc whoami --show-console
+https://console-openshift-console.apps.ocp4.example.com
+
+
+-------------------------- collect cluster information for Red Hat Support -------------------------------------
+
+collect the default support data from your openshift cluster,
+save it as a compressed tar archive named "ex280-oc-<clusterID>.tar.gz(which <clusterID> is your cluster's unique ID)" using the 
+"tar crf" command , and upload it using the provided script "/usr/local/bin/upload-cluster-data" ex280-ocp-<clusterID>.tar.gz;
+note that each upload will overwrite the previous one and multiple uploads are allowed.
+
+oc adm must-gather
+
+ClusterID: b1d661ca-7fb3-42e2-a622a-968b80672189
+
+du -sh must-gather.local423757874033911687
+
+tar -czf ex280-ocp-b1d661ca-7fb3-42e2-a622a-968b80672189.tar.gz must-gather.local423757874033911687
+
+./upload-cluster-data.sh ex280-ocp-b1d661ca-7fb3-42e2-a622a-968b80672189.tar.gz
