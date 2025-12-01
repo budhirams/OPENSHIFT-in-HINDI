@@ -1,0 +1,6 @@
+configure a network policy using the "frontend" and "backend" projects with the following requirements:
+
+Create a network policy named "db-allow-conn" in the "backend" project using the pod selector "network.openshift.io/policy-group"
+allowing only pods from the "frontend" project ( with project label team=security and pod label "deployment=sql") to connect
+on TCP port 3306, and verify the configuration by checking the logs in the frontend project.
+
