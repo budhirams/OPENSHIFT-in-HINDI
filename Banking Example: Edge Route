@@ -92,6 +92,10 @@ oc create route edge netbanking-route \
   --port=80 \
   --hostname=netbanking.mybank.com
 
+NOTE: 
+Aap route ka naam netbanking-route, myroute123, 7478484indj, ya kuch bhi rakh sakte ho.
+Sirf itna dhyan rahe ki wo naam us project mein pehle se kisi aur route ke liye use na ho raha ho.
+
 
 👉 यह एक Edge-secured URL बनाएगा
 👉 SSL termination सिर्फ Router पर होगा
