@@ -1,0 +1,136 @@
+✅ 1. क्यों nginx pod रन नहीं हुआ?
+
+OpenShift by default restricted SCC लगाता है, जिसमे container root user बनकर 80 port bind नहीं कर सकता।
+
+Normal nginx image tries to use:
+
+user: root
+port: 80
+
+
+जो allowed नहीं है → इसलिए pod CrashLoopBackOff / Error में चला जाता है।
+
+✅ 2. इसको चलाने के लिए हम ServiceAccount + anyuid SCC देते हैं
+➤ ServiceAccount बनाओ
+oc create serviceaccount nginx
+
+➤ इस SA को anyuid SCC दो
+oc adm policy add-scc-to-user anyuid -z nginx
+
+➤ Deployment में इस SA को सेट करो
+oc set serviceaccount deployment/webserver nginx
+
+
+Deployment दोबारा rollout होगा और नया pod Running हो जाएगा।
+
+✅ 3. Route कैसे बनता है?
+Step-1: Service expose होती है
+
+आपकी nginx deployment का service:
+
+oc get svc
+
+
+ये service ही traffic pod तक भेजेगी।
+
+❗Important Concept (Banking Grade Explanation)
+Route service से जुड़ता है
+
+लेकिन
+
+Traffic last में pod के endpoint तक जाता है
+
+जैसे:
+
+oc describe route webserver
+Endpoints: 10.128.0.61:80
+
+
+इसका मतलब — route → service → pod endpoints.
+
+✅ 4. DNS importance
+
+Bank banking environment में हमेशा FQDN fixed होता है।
+
+Example:
+
+apollo.apps.ocp412.networknuts.lab
+
+
+यदि DNS entry manually ना दें, OpenShift एक random hostname दे देता है:
+
+webserver-project.apps.ocp412.xxxxxx.com
+
+
+लेकिन banking में ALWAYS real DNS use होता है।
+
+✅ 5. Expose an Unsecured Route
+oc expose svc/webserver --hostname apollo.apps.ocp412.networknuts.lab
+
+
+This is unsecure route → यानी HTTP only.
+
+oc get route
+
+❗Unsecure route =
+
+✔ Outside → insecure
+✔ Inside → insecure
+
+Use-case: Lab only
+Banking me allowed nahi hota.
+
+🔐 6. Secure Route (Edge Termination) बनाना – A to Z
+Edge Route में:
+
+✔ Outside client to Router = HTTPS (encrypted)
+✔ Router to Pod = HTTP (unencrypted)
+(banking apps मे इसको mostly use किया जाता है)
+
+➤ आपको दो file चाहिए:
+
+main.crt → certificate
+
+app.key → private key
+
+Banking me ये CA से sign होकर आते हैं।
+⭐ Create Secure Edge Route
+oc create route edge app-route-edge \
+  --cert=main.crt \
+  --key=app.key \
+  --hostname=apollo.apps.ocp412.networknuts.lab \
+  --service=webserver
+
+Verify:
+oc get route
+
+
+You will see:
+
+app-route-edge   edge   https   apollo.apps.ocp412.networknuts.lab
+
+🔐 Secure (Edge) Route Security Logic
+
+✔ Outside user → HTTPS
+❗ Router → Service → Pod = HTTP
+
+✔ यह 90% Banking Applications में होता है क्योंकि
+Router HTTPS offload कर लेता है → Pod पर load नहीं आता।
+
+📌 छोटे-छोटे Confusions Clear
+1. route pod से connect होता है, service से नहीं?
+
+➡ Internally route → service → endpoint (pod IP)
+लेकिन oc describe route endpoints pod दिखाता है।
+इसलिए आपको pod दिखाई देता है।
+
+2. Route का नाम कुछ भी दे सकते हैं?
+
+हाँ → unique होना चाहिए।
+
+app-route-edge
+test123-route
+abc987route
+
+
+कुछ भी चलेगा।
