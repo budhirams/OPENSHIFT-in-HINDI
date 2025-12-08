@@ -141,3 +141,308 @@ Use in Banking	High availability, stable identity, secure connection
 अगर चाहें, मैं आपको full production-ready MySQL/Postgres StatefulSet+Headless service YAML भी दे सकता हूँ, जिसमें secrets, configmaps, resource limits और readiness probes हों।
 
 बताइए!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+----------------------------------------------------------------------------------------------------------------------------------------
+
+Perfect! अब मैं आपको Killer Koda (Kubernetes Playground) में A→Z Practical Lab दूँगा ताकि आप खुद StatefulSet + Headless Service का पूरी तरह hands-on कर सकें।
+
+इस guide में EVERYTHING ready है:
+
+✔ Full production-style MySQL StatefulSet
+✔ Headless Service
+✔ Secret
+✔ PVC
+✔ Commands
+✔ Verification steps
+✔ Killer Koda में चलाने के लिए exact YAML
+
+आप बस copy-paste करके practice start कर सकते हैं।
+
+🚀 Killer Koda: StatefulSet + Headless Service Practical (MySQL)
+
+(Works on any Kubernetes cluster → KillerKoda, Minikube, K3s, Rancher Desktop, etc.)
+
+✅ STEP-1: Secret बनाना
+
+MySQL को password चाहिए, इसलिए पहले secret create करें:
+
+👉 mysql-secret.yaml
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+type: Opaque
+data:
+  MYSQL_ROOT_PASSWORD: bXlzcWwxMjM=   # base64 of mysql123
+
+
+Apply:
+
+kubectl apply -f mysql-secret.yaml
+
+✅ STEP-2: Headless Service बनाना
+
+👉 mysql-headless.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql-headless
+  labels:
+    app: mysql
+spec:
+  clusterIP: None        # HEADLESS
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    name: mysql
+
+
+Apply:
+
+kubectl apply -f mysql-headless.yaml
+
+✅ STEP-3: StatefulSet (3-node MySQL cluster skeleton/template)
+
+👉 mysql-statefulset.yaml
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mysql
+spec:
+  serviceName: mysql-headless    # IMPORTANT
+  replicas: 3
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        ports:
+        - containerPort: 3306
+          name: mysql
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: mysql-secret
+              key: MYSQL_ROOT_PASSWORD
+        volumeMounts:
+        - name: mysql-persistent-storage
+          mountPath: /var/lib/mysql
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-persistent-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
+
+
+Apply:
+
+kubectl apply -f mysql-statefulset.yaml
+
+🟢 STEP-4: Check Pods creation
+kubectl get pods -l app=mysql -o wide
+
+
+Expected:
+
+mysql-0
+mysql-1
+mysql-2
+
+
+All should be Running.
+
+🟢 STEP-5: Check PVCs created per pod
+kubectl get pvc
+
+
+Expected:
+
+mysql-persistent-storage-mysql-0
+mysql-persistent-storage-mysql-1
+mysql-persistent-storage-mysql-2
+
+
+This proves volumeClaimTemplates is working.
+
+🟢 STEP-6: Check DNS names (MOST IMPORTANT)
+
+Test DNS resolve from inside cluster:
+
+kubectl exec -it mysql-0 -- nslookup mysql-headless
+
+
+Output will show pod IPs:
+
+Name: mysql-headless
+Address 1: 10.244.1.10 mysql-0
+Address 2: 10.244.2.12 mysql-1
+Address 3: 10.244.3.15 mysql-2
+
+
+This confirms:
+
+✔ Headless service
+✔ DNS returns pod IPs
+✔ StatefulSet stable identity
+
+🟢 STEP-7: Connect to MySQL to verify data persistence
+kubectl exec -it mysql-0 -- bash
+mysql -u root -p
+# password = mysql123
+
+
+Create a test DB:
+
+CREATE DATABASE testdb;
+
+
+Exit, then delete pod:
+
+kubectl delete pod mysql-0
+
+
+Check again:
+
+kubectl exec -it mysql-0 -- mysql -u root -p
+SHOW DATABASES;
+
+
+testdb will still be there ⇒ PVC working!
+
+🎯 What You Achieved in This Practical
+
+You successfully tested:
+
+Concept	Verified?
+Headless Service	✔ DNS returns pod IPs
+StatefulSet identity	✔ mysql-0, mysql-1, mysql-2
+Persistent storage	✔ PVC per pod
+Stable DNS names	✔ mysql-0.mysql-headless
+Pod restart = no data loss	✔ tested
+Banking-style DB architecture	✔ practically done
+🔥 Want Production-Level MySQL Cluster (Full Replication) Next?
+
+I can give you:
+
+✅ MySQL Group Replication (3-node cluster)
+✅ MySQL InnoDB Cluster
+✅ Galera Cluster (banking-grade)
+✅ PostgreSQL Patroni HA
+✅ Kafka + Zookeeper StatefulSet
+✅ Redis cluster with headless service
+
+बस बोलिए कौन सा practical चाहिए!
+
+You said:
+controlplane:~$ kubectl exec -it mysql-0 -- nslookup mysql-headless
+error: Internal error occurred: Internal error occurred: error executing command in container: failed to exec in container: failed to start exec "24abd40467d36da2bed4366efda7ed08ced06cbeb8a346b54ea3a4d48e39025f": OCI runtime exec failed: exec failed: unable to start container process: exec: "nslookup": executable file not found in $PATH: unknown
+ChatGPT said:
+
+आपका error बिल्कुल सही है — MySQL image के अंदर nslookup install नहीं होता, इसलिए Kubernetes exec command fail हो गई।
+
+Error:
+
+exec: "nslookup": executable file not found
+
+
+मतलब MySQL container में nslookup नहीं है।
+
+कोई दिक्कत नहीं — DNS test करने के लिए 3 आसान तरीके हैं। मैं आपको सबसे आसान तरीका देता हूँ जो KillerKoda में 100% काम करेगा।
+
+✅ ✔ Method-1 (Recommended): BusyBox Pod बनाकर DNS चेक करें
+
+MySQL pod में nslookup नहीं है, इसलिए हम एक छोटा pod बनाएँगे:
+
+kubectl run testpod --image=busybox:1.28 --command -- sleep 3600
+
+
+अब testpod के अंदर जाकर DNS check करें:
+
+kubectl exec -it testpod -- nslookup mysql-headless
+
+
+Expected output:
+
+Name: mysql-headless
+Address 1: 10.244.x.x mysql-0
+Address 2: 10.244.x.x mysql-1
+Address 3: 10.244.x.x mysql-2
+
+
+यानी Headless Service सही काम कर रही है।
+
+✅ ✔ Method-2: dig का उपयोग (अगर dig वाली image चाहिए)
+kubectl run dnsutils --image=infoblox/dnstools -- sleep 3600
+kubectl exec -it dnsutils -- dig mysql-headless
+
+✅ ✔ Method-3: MySQL pod से सीधे ping करें
+
+(MySQL image में ping भी नहीं होता — depends on image but usually no.)
+
+Try:
+
+kubectl exec -it mysql-0 -- ping mysql-1.mysql-headless
+
+
+If ping not available, then fallback to Method 1 (BusyBox).
+
+💡 Why MySQL image does NOT have nslookup?
+
+MySQL official images are minimal:
+
+No nslookup
+
+No dig
+
+No ping
+
+No curl
+
+No wget
+
+इसलिए हर StatefulSet practical में हम BusyBox pod use करते हैं DNS test के लिए।
+
+🚀 Summary (What you should run now)
+STEP-1: Create test pod
+kubectl run testpod --image=busybox -- sleep 3600
+
+STEP-2: DNS test
+kubectl exec -it testpod -- nslookup mysql-headless
+
+अगर चाहें तो मैं आपको एक READY YAML दे सकता हूँ:
+
+busybox-test.yaml (DNS testing pod)
+
+dnstools.yaml
+
+full mysql-cluster-ready setup
+
+चाहिए?
