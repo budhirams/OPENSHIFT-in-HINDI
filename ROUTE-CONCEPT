@@ -1,0 +1,238 @@
+oc new-app --name webserver --image nginx 
+
+oc get pods
+
+oc new-app also create a service for me as I can see.
+
+application is not going to be able to run because normal nginx to require bind to port number 80 which is not allowed default in openshift
+
+openshift me direct allow nhi krta bind ke liye
+
+oc create serviceaccount nginx 
+
+oc adm policy add-scc-to-user anyuid -z nginx 
+
+-z → ServiceAccount
+nginx → ServiceAccount का नाम
+    
+Command का मतलब → “nginx ServiceAccount को anyuid SCC दे दो 
+
+oc get deployments
+
+oc set serviceaccount deployment/webserver nginx                           nginx → ServiceAccount का नाम
+
+now it create a new pod , and it is running without any error
+
+oc new-app command also create a service for me which is already there as I can see.
+
+Now I want to create a route ::
+
+hostname depends on DNS records           
+
+oc get svc
+--- webserver
+
+oc expose service serice-name and the hostname , hostname is depends upon your dns record right 
+I have already configured my DNS to work with the name
+
+Insecure expose:
+
+oc expose svc webserver --hostname apollo.apps.ocp412.networknuts.lab
+
+oc get svc
+
+oc get route
+NAME                   HOST/PORT                           PATH                SERVICES         PORT          TERMINATION          WILDCARD
+webserver         apolo.apps.ocp412.networknuts.lab                            webserver       80-tcp                                None
+
+Lots people think that routes connect to the service , it is wrong ,it actually connect to the pod
+
+oc get pods -o wide 
+here pods ip is showing 
+
+oc describe route webserver
+here is you can see ENDPOINTS
+Endpoints: 10.128.0.61:80
+So this is for IP so the route directly take you to the Pod
+curl apolo.apps.ocp412.networknuts.lab
+
+This is using http protocol that is insecure
+---------------------------------------------------------------
+
+Make it secure for that you will require a SSL TLS sertificate.
+If you dont have your CA authority can issue one depending upon what hostname you want to use I already have my certificate 
+ls
+app.key main.crt todo.yaml
+
+oc get routes
+NAME          HOST/PORT                              PATH              SERVICES                PORT            TERMINATION        WILDCARD
+webserver   apollo.apps.ocp412.networknuts.lab                        webserver               80-tcp                                 None
+
+
+oc delete route webserver
+
+
+--------------------------------- Now I want to create a new Edge route ---------------------------------------------------------
+edge route : secure in outside and insecure inside 
+
+oc create route --help
+
+oc create route edge --help
+
+oc create route edge app-route-edge --cert main.crt --key app.key  --hostname apollo.apps.ocp412.networknuts.lab --service webserver
+
+oc get route 
+NAME              HOST/PORT                                 PATH      SERVICES      PORT    TERMINATION           WILDCARD
+app-route-edge   apollo.apps.ocp412.networknuts.lab                  webserver    80-tcp       edge                None
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------------------------------------------------
+
+oc create route edge app-route-edge \
+  --cert main.crt \
+  --key app.key \
+  --hostname apollo.apps.ocp412.networknuts.lab \
+  --service webserver
+
+Iska matlab:
+
+Route type: edge
+
+TLS cert/key manually diya
+
+Service: webserver
+
+External URL expose kiya
+
+
+2️⃣ SAME cheez YAML me kaise likhen (Route YAML)
+route-edge.yaml
+
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: app-route-edge
+spec:
+  host: apollo.apps.ocp412.networknuts.lab
+  to:
+    kind: Service
+    name: webserver
+  port:
+    targetPort: 80
+  tls:
+    termination: edge
+    certificate: |
+      -----BEGIN CERTIFICATE-----
+      (main.crt ka content yahan paste karo)
+      -----END CERTIFICATE-----
+    key: |
+      -----BEGIN PRIVATE KEY-----
+      (app.key ka content yahan paste karo)
+      -----END PRIVATE KEY-----
+
+
+oc apply -f route-edge.yaml
+
+oc get route app-route-edge
+
+
+3️⃣ Ab aata hai NFS PATH ka role (important 🔥)
+
+❗ Route ka NFS se direct koi relation nahi hota
+Route sirf traffic handle karta hai
+NFS storage ke liye hota hai (web files, logs, uploads, etc.)
+
+👉 NFS use hota hai:
+
+Deployment / Pod ke andar
+
+Volume ke through
+
+4️⃣ NFS ke liye pehle PV (PersistentVolume)
+
+nfs-pv.yaml
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: nfs-pv-web
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: 10.10.10.20        # NFS server IP
+    path: /exports/webdata    # NFS path
+
+
+oc apply -f nfs-pv.yaml
+
+
+5️⃣ PVC (PersistentVolumeClaim)
+nfs-pvc.yaml
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: webserver-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+
+oc apply -f nfs-pvc.yaml
+
+6️⃣ Deployment jisme NFS mount hoga
+
+deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webserver
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: webserver
+  template:
+    metadata:
+      labels:
+        app: webserver
+    spec:
+      containers:
+      - name: web
+        image: nginx
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: webdata
+          mountPath: /usr/share/nginx/html
+      volumes:
+      - name: webdata
+        persistentVolumeClaim:
+          claimName: webserver-pvc
+7️⃣ Flow samajh lo (INTERVIEW + REAL WORLD)
+User
+ ↓
+Route (edge TLS)
+ ↓
+Service (webserver)
+ ↓
+Pod (nginx)
+ ↓
+NFS (/exports/webdata)
+
+👉 NFS me jo file hogi:
+/index.html
+
+Wahi file browser me dikhegi:
+https://apollo.apps.ocp412.networknuts.lab
+
