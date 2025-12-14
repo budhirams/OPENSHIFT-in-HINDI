@@ -1,0 +1,219 @@
+1️⃣ OpenShift 2-Tier Application Deployment (A–Z)
+
+🔹 Architecture Overview
+
+Is deployment me 2 layers (tiers) hote hain:
+
+🔸 Backend
+
+PostgreSQL database
+
+Ye application ka data store karta hai
+
+🔸 Frontend
+
+Nextcloud
+
+User isi application se connect karta hai
+
+User
+ ↓
+Route
+ ↓
+Nextcloud (Frontend)
+ ↓
+PostgreSQL (Backend)
+
+
+2️⃣ Database ke liye Required Information
+
+Nextcloud aur PostgreSQL dono ko same database details chahiye hoti hain:
+
+PostgreSQL host name
+
+PostgreSQL username
+
+PostgreSQL password
+
+Database name
+
+👉 Ye sensitive information hoti hai
+👉 Isliye hum Secret ka use karte hain
+
+
+3️⃣ Secret ka Role (Very Important 🔐)
+
+Hum ek common Secret banate hain jo:
+
+Nextcloud ko mile
+
+PostgreSQL ko bhi mile
+
+Isse:
+
+Password hard-code nahi hota
+
+Security maintain rehti hai
+
+Production standard follow hota hai
+
+
+4️⃣ New Project Create Karna
+oc new-project nextcloud-app
+👉 Ye ek alag namespace banata hai
+👉 Saari resources isi project ke andar rahengi
+
+
+5️⃣ Secret Create Karna (Opaque Secret)
+
+oc create secret generic nextcloud-credentials \
+--from-literal=POSTGRES_HOST=db \
+--from-literal=POSTGRES_PASSWORD=nextcloud \
+--from-literal=POSTGRES_DB=nextcloud \
+--from-literal=POSTGRES_USER=nextcloud
+
+🔍 Yahan kya ho raha hai?
+
+Secret ka naam: nextcloud-credentials
+
+Type: Opaque (default)
+
+Isme DB ki saari information store hai
+
+6️⃣ Opaque Secret ka Meaning (Clear Hindi)
+👉 Opaque Secret kya hota hai?
+
+Generic Secret
+
+Data base64 encoded hota hai
+
+OpenShift ko ye nahi pata hota:
+
+password kya hai
+
+username kya hai
+
+OpenShift bas:
+
+data ko secure rakhta hai
+
+pod tak pass kar deta hai
+
+📌 Simple line:
+
+Opaque Secret = “OpenShift ke liye data andarkaar hota hai,
+wo sirf safely store aur forward karta hai.”
+
+
+
+7️⃣ ServiceAccount aur SCC ka Concept (MOST IMPORTANT 🔥)
+❓ Problem kya hoti hai?
+
+PostgreSQL ko initialization ke time:
+
+Superuser (root / fixed UID) access chahiye
+
+Lekin OpenShift:
+
+Default SCC ke saath
+
+Pod ko random UID me chalata hai
+
+Is wajah se DB pod fail ho sakta hai ❌
+
+
+8️⃣ Solution: Custom ServiceAccount + anyuid SCC
+🔹 ServiceAccount create karo
+oc create serviceaccount nextcloud-sa
+
+🔹 anyuid SCC assign karo
+oc adm policy add-scc-to-user anyuid -z nextcloud-sa
+
+🔍 Important samajhna
+
+nextcloud-sa = ServiceAccount
+
+anyuid = allow karta hai pod ko superuser UID me run karne ke liye
+
+Pod ko directly SCC nahi dete
+
+ServiceAccount ke through dete hain ✅
+
+👉 oc new-app automatically:
+
+Deployment create karta hai
+
+Service create karta hai
+
+1️⃣1️⃣ Deployment Status Check
+oc get deployments
+
+
+Expected output:
+
+NAME        READY   UP-TO-DATE   AVAILABLE
+db          0/1     1            0
+nextcloud   0/1     1            0
+
+
+(Initially pods start ho rahe hote hain)
+
+1️⃣2️⃣ Secret ko Deployments me Inject Karna
+oc set env --from=secret/nextcloud-credentials deployment/nextcloud
+oc set env --from=secret/nextcloud-credentials deployment/db
+
+
+👉 Isse:
+
+Secret ke values environment variables ban jaate hain
+
+Dono applications same DB details use karte hain
+
+1️⃣3️⃣ ServiceAccount ko Deployment ke saath Attach Karna
+oc set sa deployment/nextcloud nextcloud-sa
+oc set sa deployment/db nextcloud-sa
+
+
+👉 Ab dono pods:
+
+nextcloud-sa ke under run honge
+
+anyuid SCC ka fayda milega
+
+1️⃣4️⃣ Pods Running Check Karna
+oc get pods
+
+
+👉 Ab pods Running state me honge ✅
+
+1️⃣5️⃣ Services Check Karna
+oc get svc
+
+
+Example:
+
+NAME        TYPE        CLUSTER-IP       PORT
+db          ClusterIP  172.30.x.x        5432
+nextcloud   ClusterIP  172.30.x.x        80
+
+🔍 Important Point
+
+db service → internal use ke liye
+
+nextcloud service → frontend
+
+1️⃣6️⃣ Frontend ko Expose Karna (Route)
+oc expose svc nextcloud \
+--hostname nextcloud.apps.ocp412.networknuts.lab
+
+
+👉 Sirf frontend expose karte hain
+👉 Backend database kabhi expose nahi karte 🔐
+
+1️⃣7️⃣ Final Banking / Production Rule 🏦
+
+✔ Frontend → Route ke through expose
+❌ Backend → sirf internal ClusterIP
+✔ Secrets → Opaque
+✔ SCC → ServiceAccount ke through
+✔ Hard-coding passwords ❌
