@@ -1,5 +1,53 @@
-1️⃣ OpenShift 2-Tier Application Deployment (A–Z)
+#️⃣oc new-project nextcloud-app
+#️⃣oc create secret generic nextcloud-credentials \
+  --from-literal=POSTGRES_HOST=db \
+  --from-literal=POSTGRES_PASSWORD=nextcloud \
+  --from-literal=POSTGRES_DB=nextcloud \
+  --from-literal=POSTGRES_USER=nextcloud
 
+#️⃣oc create serviceaccount nextcloud-sa
+
+#️⃣oc adm policy add-scc-to-user anyuid -z nextcloud-sa
+
+🔹 Nextcloud (Frontend)
+#️⃣oc new-app --name nextcloud --image nextcloud:apache
+
+🔹 PostgreSQL (Backend)
+#️⃣oc new-app --name db --image postgres:alpine
+
+
+#️⃣oc get deployments
+  NAME        READY   UP-TO-DATE   AVAILABLE
+  db          0/1     1            0
+  nextcloud   0/1     1            0
+
+#️⃣oc set env --from=secret/nextcloud-credentials deployment/nextcloud
+#️⃣oc set env --from=secret/nextcloud-credentials deployment/db
+#️⃣oc set sa deployment/nextcloud nextcloud-sa
+#️⃣oc set sa deployment/db nextcloud-sa
+#️⃣oc get svc
+  NAME        TYPE        CLUSTER-IP       PORT
+  db          ClusterIP  172.30.x.x        5432 
+  nextcloud   ClusterIP  172.30.x.x        80
+
+#️⃣oc expose svc nextcloud \
+  --hostname nextcloud.apps.ocp412.networknuts.lab \
+  --tls-termination=edge
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+1️⃣ OpenShift 2-Tier Application Deployment (A–Z)
 🔹 Architecture Overview
 
 Is deployment me 2 layers (tiers) hote hain:
@@ -24,7 +72,6 @@ Nextcloud (Frontend)
  ↓
 PostgreSQL (Backend)
 
-
 2️⃣ Database ke liye Required Information
 
 Nextcloud aur PostgreSQL dono ko same database details chahiye hoti hain:
@@ -39,7 +86,6 @@ Database name
 
 👉 Ye sensitive information hoti hai
 👉 Isliye hum Secret ka use karte hain
-
 
 3️⃣ Secret ka Role (Very Important 🔐)
 
@@ -57,15 +103,14 @@ Security maintain rehti hai
 
 Production standard follow hota hai
 
-
 4️⃣ New Project Create Karna
 oc new-project nextcloud-app
+
+
 👉 Ye ek alag namespace banata hai
 👉 Saari resources isi project ke andar rahengi
 
-
 5️⃣ Secret Create Karna (Opaque Secret)
-
 oc create secret generic nextcloud-credentials \
 --from-literal=POSTGRES_HOST=db \
 --from-literal=POSTGRES_PASSWORD=nextcloud \
@@ -104,8 +149,6 @@ pod tak pass kar deta hai
 Opaque Secret = “OpenShift ke liye data andarkaar hota hai,
 wo sirf safely store aur forward karta hai.”
 
-
-
 7️⃣ ServiceAccount aur SCC ka Concept (MOST IMPORTANT 🔥)
 ❓ Problem kya hoti hai?
 
@@ -120,7 +163,6 @@ Default SCC ke saath
 Pod ko random UID me chalata hai
 
 Is wajah se DB pod fail ho sakta hai ❌
-
 
 8️⃣ Solution: Custom ServiceAccount + anyuid SCC
 🔹 ServiceAccount create karo
@@ -138,6 +180,32 @@ anyuid = allow karta hai pod ko superuser UID me run karne ke liye
 Pod ko directly SCC nahi dete
 
 ServiceAccount ke through dete hain ✅
+
+9️⃣ ServiceAccount ka real kaam
+
+ServiceAccount ka use hota hai jab:
+
+Pod ko special permissions chahiye
+
+Jaise:
+
+PVC create / access
+
+Secret / ConfigMap read
+
+OpenShift API call
+
+Dusre namespace access
+
+📌 Default ServiceAccount ye sab allow nahi karta
+
+🔟 Application Deploy Karna (oc new-app)
+🔹 Nextcloud (Frontend)
+oc new-app --name nextcloud --image nextcloud:apache
+
+🔹 PostgreSQL (Backend)
+oc new-app --name db --image postgres:alpine
+
 
 👉 oc new-app automatically:
 
