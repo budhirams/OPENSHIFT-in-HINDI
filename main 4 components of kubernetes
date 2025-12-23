@@ -1,0 +1,76 @@
+Kubernetes ke main 4 components hote hain:
+
+kube-apiserver
+
+etcd
+
+kube-controller-manager
+
+kube-scheduler
+
+1. kube-apiserver
+
+kube-apiserver Kubernetes ka entry point hota hai.
+Jo bhi instructions ya commands hum dete hain (jaise kubectl apply, create pod, etc.),
+sabse pehle kube-apiserver hi unko receive aur listen karta hai.
+
+kube-apiserver direct data store nahi karta
+
+Jo bhi configuration ya state hoti hai, wo etcd me store hoti hai
+
+Cluster me koi bhi action perform karna ho, wo kube-apiserver ke through hi hota hai
+
+2. etcd
+
+etcd ek key-value database hota hai.
+
+Kubernetes ka pure cluster ka data yahin store hota hai
+
+Jaise: pods, services, configmaps, secrets, node details, etc.
+
+Agar etcd down ho jaye, to cluster ka state lose ho sakta hai
+
+Simple words me: etcd Kubernetes ka database hai
+
+3. kube-scheduler
+
+kube-scheduler ka kaam hota hai decide karna ki pod kis worker node par run hoga.
+
+Isko hum 2 parts me samajh sakte hain:
+
+Default scheduling:
+
+Available resources (CPU, RAM)
+
+Node healthy hai ya nahi
+
+Pod requirements match ho rahi hain ya nahi
+
+Custom scheduling:
+
+Hum define kar sakte hain ki pod kaun se node par chale
+
+Jaise:
+
+nodeSelector
+
+taints and tolerations
+
+Monitoring ya specific workload ke liye specific node
+
+4. kube-controller-manager
+
+kube-controller-manager ka kaam hota hai cluster ko continuously monitor karna.
+
+Ye kube-apiserver se instructions read karta hai
+
+Check karta rehta hai ki:
+
+Desired state aur actual state same hai ya nahi
+
+Agar koi pod crash ho jaye, to naya pod create karna
+
+Replicas maintain ho rahi hain ya nahi
+
+Simple language me:
+kube-controller-manager ensure karta hai ki sab kuch theek se chal raha ho
