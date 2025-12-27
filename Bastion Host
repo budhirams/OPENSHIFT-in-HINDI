@@ -1,0 +1,20 @@
+A bastion host is a server whose purpose is to provide access to a private network from an external network, such as the internet.
+
+How it works (easy flow)
+users -->Bastion Servers ---> Private server
+- user connects to bastion (public IP)
+- Bastion connects to private network servers
+- private servers have no public IP
+
+matlab bastion host ke through hi aap all cluster nodes ko access kr sakten hai , direct aap cluster node ko access nhi kr sakten hai 
+
+bastion par kya hota hai ?
+- openshift-install
+- oc CLI
+- SSH keys
+- kubeconfig
+- DNS/LB access
+
+bastion host kya hota hai just create a instance in a public subnet
+
+
