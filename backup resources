@@ -1,0 +1,11 @@
+command to manipulate kubernetes resources
+
+🧠 One-line summary
+
+👉 oc get -o yaml command kisi bhi running resource ki exact YAML copy nikalne ke liye use hoti hai
+
+oc get -o yaml command ka use running Kubernetes resource ki complete YAML configuration nikalne ke liye hota hai.
+Is YAML ko hum backup, debugging ya dusre cluster me same resource recreate karne ke liye use kar sakte hain.”
+
+“It is used to export live Kubernetes resources into YAML for backup, modification, and re-deployment.”
+
