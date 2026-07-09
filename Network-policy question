@@ -1,0 +1,65 @@
+NetworkPolicy
+-----------------------
+
+Configure a network policy using the frontend and backend project with the following requirements
+
+Create a network policy named "db-allow-conn" in the "backend" project using the pod selector "network.openshift.io/policy-group", allowing
+only pods from the "frontend" project (with project label "team=security" and pod label "deployment=sql" to connect on TCP port "3306",
+and verify configuration by checking the logs in the frontend project.
+---------------------------------------------------------------------------
+
+oc get pod -n frontend
+--CrashLoopBackOff
+
+oc get pod  -n backend
+mysql is running
+
+oc get svc -n backend
+Endpoints: 10.130.7.59:3306
+no issue at the pod lavel
+
+oc get networkpolicy -n backend
+deny-all
+
+policy in the backend project which blocks all external connection , If we want to allow connection from the frontend we need to create ingress
+allow policy in the backend namespace.
+
+before creating ingress policy need to identift the labels on the frontend and mysql port in the backend
+
+oc get pod -n frontend --show-labels 
+oc get ns frontend --show-labels
+team=security
+
+oc get ns frontend --show-labels
+
+Networking
+   NetworkPolicies
+       create NetworkPolicy
+         policy name
+         db-allow-conn
+   Pod selector 
+   db label and selector ------ use here 
+   policy type 
+     Ingress
+   Ingress rule
+     allow pods from Inside the cluster 
+   Namespace selector
+   frontend label
+   pod selector 
+   deployment-sql=true
+  port
+    mysql 3306
+create
+
+Ingress rules
+
+Target Pods                                        from                      to ports
+------------                                     --------                    ----------
+pod selector                                  NS selector                     tcp/3306 
+network.openshift.io/policy-group=backend       team=security 
+                                              pod selector
+                                               deployment-sql=true             
+
+oc get pod -n frontend 
+oc logs gmjrkrkrkrkrk
+now successfully connected 
