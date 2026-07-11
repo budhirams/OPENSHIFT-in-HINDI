@@ -1,0 +1,214 @@
+-----------------Route Annotations-----------------------
+
+Route Annotations in OpenShift
+What are Route Annotations?
+
+Route Annotations are key-value pairs that modify the behavior of an OpenShift Route without changing the application or Service.
+
+They are mainly used to configure the HAProxy Router, which handles incoming traffic to your applications.
+
+Think of annotations as advanced settings for a Route.
+
+General syntax:
+oc annotate route <route-name> <annotation-key>=<value>
+
+To view annotations:
+oc describe route <route-name>
+
+or
+
+oc get route <route-name> -o yaml
+1. Timeout Annotation
+Purpose
+
+Controls how long the HAProxy Router waits for a response from the backend application before closing the connection.
+
+Default behavior
+
+If the application takes too long to respond, the router returns an error (typically 504 Gateway Timeout).
+
+Command
+
+Correct syntax:
+
+oc annotate route myroute \
+haproxy.router.openshift.io/timeout=5s
+
+If the annotation already exists:
+
+oc annotate route myroute \
+haproxy.router.openshift.io/timeout=5s \
+--overwrite
+Time formats
+5s    = 5 seconds
+30s   = 30 seconds
+2m    = 2 minutes
+1h    = 1 hour
+Example
+
+Suppose your application generates a large report that takes 2 minutes.
+
+Without annotation:
+
+Client
+   |
+Router (30 sec timeout)
+   |
+Application (120 sec)
+
+Result:
+504 Gateway Timeout
+
+Increase timeout:
+
+oc annotate route myroute \
+haproxy.router.openshift.io/timeout=2m
+
+Now the Router waits for 2 minutes before timing out.
+
+2. Cookie Name Annotation (Sticky Session)
+Purpose
+
+Used to enable session persistence (sticky sessions).
+
+A user continues to communicate with the same Pod instead of being switched between different Pods.
+
+Why is this needed?
+
+Some applications store session data in memory.
+
+Example:
+
+Pod-1
+Pod-2
+Pod-3
+
+User logs in.
+
+Without sticky sessions:
+
+Request 1 → Pod-1
+
+Request 2 → Pod-2
+
+Session Lost
+
+With sticky sessions:
+
+Request 1 → Pod-1
+
+Request 2 → Pod-1
+
+Request 3 → Pod-1
+
+Everything works correctly.
+
+Command
+
+Correct syntax
+
+oc annotate route myroute \
+router.openshift.io/cookie_name=mycookie
+
+Example cookie returned by browser:
+
+Set-Cookie:
+mycookie=pod1
+
+The Router uses this cookie to send future requests to the same Pod.
+
+3. IP Whitelist (Restricting Access)
+Purpose
+
+Allow only specific IP addresses or networks to access the Route.
+
+Everyone else is denied.
+
+Example
+
+Allow only office network:
+
+192.168.1.0/24
+Command
+oc annotate route myroute \
+haproxy.router.openshift.io/ip_whitelist="192.168.1.0/24"
+Multiple IPs
+oc annotate route myroute \
+haproxy.router.openshift.io/ip_whitelist="192.168.1.10 192.168.1.20"
+Multiple Networks
+oc annotate route myroute \
+haproxy.router.openshift.io/ip_whitelist="192.168.1.0/24 10.10.0.0/16"
+Example
+
+Without whitelist:
+
+Internet
+
+User A ✓
+
+User B ✓
+
+User C ✓
+
+With whitelist:
+
+Office Network ✓
+
+VPN Users ✓
+
+Other Internet Users ✗
+
+This is commonly used for:
+
+Internal dashboards
+Admin portals
+Monitoring applications
+Company-only applications
+4. Rate Limiting
+Purpose
+
+Limits how many requests a client can send.
+
+Helps protect applications from:
+
+Too many requests
+Bots
+Brute-force attacks
+Denial-of-Service (DoS) attacks
+Enable Rate Limiting
+oc annotate route myroute \
+haproxy.router.openshift.io/rate-limit-connections=true
+Limit Concurrent Connections
+
+Maximum simultaneous TCP connections:
+
+oc annotate route myroute \
+haproxy.router.openshift.io/rate-limit-connections.concurrent-tcp=20
+
+Meaning:
+
+User
+
+Maximum Connections = 20
+
+21st connection → Rejected
+Limit HTTP Requests
+oc annotate route myroute \
+haproxy.router.openshift.io/rate-limit-connections.rate-http=100
+
+Meaning:
+
+Maximum 100 HTTP requests per second.
+
+101st request
+
+↓
+
+Rejected or delayed
+Limit TCP Connection Rate
+oc annotate route myroute \
+haproxy.router.openshift.io/rate-limit-connections.rate-tcp=50
+
+Meaning:
+
+Maximum 50 new TCP connections per second.
