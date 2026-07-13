@@ -1,0 +1,135 @@
+- Objective: Deploy an apache server using ConfigMap to serer custom web content
+- Task details
+   - create a new project named: 'peech'
+   - create a new application using the 'Bitnami's Apache' image
+   - create a firl named 'index.html' with the content 'Apche Rocks'
+   - using a ConfigMap named 'content' configure the Apache server to serve the 'index.html' file to its user
+   - Make the application accessible via the URL "http://apache.app-crc.testing"
+Hint: The document root for the apche server is "/app"
+
+oc new-project peech
+
+create the application
+oc new-app bitnami/apache
+oc get pods
+echo "Apache Rocks" > index.html
+
+create a ConfigMap named content from the file
+oc create configmap content --from-file=index.html
+
+check the deployment name
+oc get deployment
+
+edit the deployment
+oc edit deployment apache
+
+add volume
+-------------
+volumes:
+  - name: content
+    configMap:
+       name: content
+
+Add volume mounts
+----------------------
+volumeMounts:
+  - name: content
+    mountPath: /app/index.html
+    subPath: index.html
+
+expose the service
+----------------------
+oc expose service apache
+
+oc get route
+oc edit route apache
+spec:
+  host: apache.app-crc.testing
+
+curl http://apache.app-crc.testing
+------------------------------------------ cli method -2 ------------------------------
+oc new-project peach
+echo "Apache Rocks" > index.html
+oc create configmap content --from-file=index.html
+oc new-app --image=bitnami/apache
+oc get pod ----- it is running noe
+
+oc set volume deployment/apache --add --type=configmap --configmap-name=content --mount-path=/app
+
+oc expose service/apache --hostname=apache.apps-crc.testing
+curl http://apache.apps.testing 
+
+
+-------------------------------------------------------------------------------------------------
+We are creating this service to allow network access to our pods.
+oc expose deployment deployment-name --port=8080
+the port flag specifies which port the service should taget on the pods.
+
+lets create a route to make our application accessible from outside the cluster
+This command creates a route for our service , making it accessible via a URL
+oc expose service deoloyment-name
+
+oc get routes
+host/port
+plum-deployment-plum.apps-crc.testing
+curl plum-deployment-plum.apps-crc.testing
+
+
+
+
+------------------------------------------------------------------
+
+apiVersion: template.openshift.io/v1
+kind:Template
+metadata:
+   name: octopus-template
+   annotations:
+     description: "This template deploys an Octopus Deploy server on Openshift."
+   labels:
+     app: octopus-app
+     tier: frontend
+     environment: production
+objects:
+  - apiVersion: v1
+    kind: Depl
+    metadata:
+      name: octopus-app
+      labels:
+        app: octopus-app
+    spec:
+      replicas: 1
+      selector:
+         matchLabels:
+            app: octopus-app
+      template:
+        metadata:
+          labels:
+            app: octopus-app
+        spec:
+          containers:
+            - name: octopus-app
+              image: bitnami/nginx
+              ports:
+                - containerPort: 8080
+               resources:
+                 limits:
+                   memory: "512Mi"
+                   cpu: "500m"
+                 requests:
+                   memory: "256Mi"
+                   cpu: "250m"
+- apiVersion: v1
+    kind: Service
+    metadata:
+      name: octopus-service
+    spec:
+      selector:
+        app: octopus-app
+      ports:
+          port: 80
+          targetPort: 8080
+
+oc autoscale deployment octopus-app --min=2 --max=8 --cpu-percent=75
+
+oc get hpa ---horizontal pod autoscaler
+oc get template
