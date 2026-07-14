@@ -1,0 +1,164 @@
+Multi Container App
+------------------------
+
+- Objective: Deploy MySQL with secrets for credentials 
+- Task details:
+     - Create a new MySQL instance in the 'atlantis' project
+     - Use the image: registry.redhat.io/rhel8/mysql-80:latest
+     - Set the mandatory environment variable "MYSQL_DATABASE" "MYSQL_USER" and "MYSQL_PASSWORD" all to 'ex280' and store them in a secret
+       named 'mysql-secret'
+     - Ensure that future peer application can reach this database instance using name 'mysql'
+
+oc project atlantis
+
+oc create secret generic mysql-secret \
+--from-literal=MYSQL_DATABASE=ex280 \
+--from-literal=MYSQL_USER=ex280 \
+--from-literal=MYSQL_PASSWORD=ex280
+
+--from-literal=MYSQL_DATABASE=ex280
+इसका मतलब
+
+Secret में एक key बनाओ और उसकी value रखो ex280
+
+
+
+oc new-app \
+--name=mysql \
+--image=registry.redhat.io/rhel8/mysql-80:latest
+इसका काम
+
+OpenShift image download करेगा।
+
+उससे Deployment बनाएगा।
+
+Deployment Pod बनाएगा।
+
+Service भी बनाएगा ताकि दूसरे Pods MySQL तक पहुँच सकें।
+
+
+oc new-app --name=mysql --image=registry.redhat.io/rhel8/mysql-80:latest
+oc new-app OpenShift की एक high-level command है।
+यह command अपने आप कई resources बना सकती है, जैसे:
+
+Deployment
+Pod
+ReplicaSet
+Service (अगर ज़रूरी हो)
+यानी आपको अलग-अलग oc create deployment, oc create service जैसी commands नहीं चलानी पड़तीं।
+--name=mysql
+इसका मतलब है कि application का नाम mysql होगा।
+
+यानी resources कुछ इस तरह बन सकते हैं:
+Deployment : mysql
+Pod        : mysql-xxxxx
+Service    : mysql
+
+oc set env deployment/mysql --from=secret/mysql-secret
+Deployment के सभी Pods में Secret की values environment variables के रूप में डाल दो।
+
+oc set env deployment/mysql --list
+MYSQL_DATABASE=ex280
+
+MYSQL_USER=ex280
+
+MYSQL_PASSWORD=ex280
+
+oc get pods
+oc logs mysql-8f87v7fvj
+oc describe pod  mysql-8f87v7fvj
+
+
+
+
+----------------------------------- Multi Container App -----------------------------------------------------
+- Objective: Deploy a Multi container App
+- Task details:
+    - Deploy the 'famous-quotes.yaml' file into the 'atlantis' project
+    - Use the image "quay.io/redhattraining/famous-quotes:2.1"
+    - Use port 8000 for the application
+    - Ensure two instances are running
+    - Make the application reachabe at http://quotes.apps-crc.testing
+    - Use 'quotes' for both labels and resource names
+    - set the following environment variables:
+           - QUOTES_HOSTNAME = mysql
+           - QUOTES_USER = ex280
+           - QUOTES_DATABASE = ex280
+           - QUOTES_PASSWORD = ex280
+- Make sure the application produces an output
+
+oc prkject atlantis
+vi famous-quotes.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+   name: quotes       ------- Deployment का नाम
+   namespace: atalantis
+   labels:
+      app: quotes          -------- Label एक tag होता है।        इन labels की मदद से Service Pods को ढूँढती है।
+spec:
+   replicas: 2
+   selector: 
+      matchLabels:
+          app: quotes
+   template:
+      metadata:
+          labels:
+             app: quotes
+      spec:
+        containers:
+        - name: quotes
+          image: quay.io/redhattraining/famous-quotes:2.1
+          ports:
+          - containerPort: 8000
+          env:
+          - name: QUOTES_HOSTNAME
+            value: mysql
+          - name: QUOTES_USER
+            value: ex280
+          - name: QUOTES_DATABASE
+            value: ex280
+          - name: QUOTES_PASSWORD
+            value: ex280
+
+------------------------------------
+selector:
+   matchLabels:
+      app: quotes
+यह सबसे important हिस्सा है।
+Deployment किस Pod को manage करेगा?
+उत्तर
+जिस Pod का label होगा
+app=quotes
+------------------------------------
+template:
+यहीं से Pods बनेंगे।
+------------------------------------
+Pod Metadata
+metadata:
+   labels:
+      app: quotes
+Pod पर label लगाया।
+app=quotes
+Deployment इसी label से Pod को पहचानता है।
+Service भी इसी label से Pod तक पहुँचती है।
+------------------------------------
+spec:
+अब Pod के अंदर क्या होगा।
+containers:
+Pod में कितने containers होंगे।
+
+
+
+
+
+oc apply -f famous-quotes.yaml
+oc expose deployment quotes --port=8000
+service/quotes exposed
+oc expose service quotes --hostname=quotes.apps-crc.testing
+route.route.openshift.io/quotes exposed
+
+oc get pods
+oc get service
+oc get routes
+curl quotes.apps-crc.testing
