@@ -1,0 +1,97 @@
+oc get all
+oc get pod first-dh3n33 -o yaml
+oc get pod first-dh3n33 -o json
+oc describe pod first-dh3n33 | grep IP
+oc get pod -l deployment=first-app
+oc get pods --field-selector=status.phase=Running
+
+----------------Importing, Exporting and Configuring Kubernetes Resources in Openshift ------------------------------------
+oc apply -f ./test
+./test ek directory (folder) hai.
+Us folder ke andar multiple YAML files ho sakti hain.
+folder ke andar jitni bhi yaml files hain sabko apply kar deta hai.
+
+oc apply -f ./test/service_account.yaml
+Yahan sirf ek YAML file apply ho rahi hai.
+
+oc get deployment first-app -o yaml > my-deployment.yaml
+
+oc get secrets
+deployer-token-gd7pc      kubernetes.io/service-account-token
+
+
+oc extract secret/deployer-token-gd7pc
+oc extract secret/deployer-token-gd7pc --to=./tmp
+Current directory me extract mat karo.
+tmp/ca.crt
+tmp/namespace
+tmp/service-ca.crt
+tmp/token
+
+
+
+echo cHJvZHVjdGlvbg== | base64 -d
+Output
+production
+
+Ab oc extract kya karta hai?
+oc extract secret/deployer-token-gd7pc
+Ye automatically
+Base64 Decode
+kar deta hai.
+Aur current directory me
+token
+namespace
+ca.crt
+naam ki files bana deta hai.
+
+
+----------------------------------- Imperative vs Declarative commands ----------------------------------------------
+- Declarative   oc apply
+- Imperative
+        oc create
+        oc delete
+        oc replace
+        oc edit
+------------------------------------------------ Logs ------------------------------------
+oc logs -f pod/pod-name
+
+viewing node logs
+  oc adm node-logs node-name
+
+  oc adm node-logs --role master
+  oc adm node-logs --role master -u kubelet
+oc new-app --name=log-demo --docker-image=nginx
+--name=log-demo
+Ye application ka naam hai.
+
+Matlab
+Deployment ka naam
+ log-demo
+Pod ka naam
+ log-demo-xxxxx
+Service ka naam
+ log-demo
+Isi naam se related resources banenge.
+
+------------------------------------ deployment -------------------------------
+oc create deployment my-deployment -o yaml --image=bitnami/nginx --save-config --dry-run=client > my-deployment.yaml
+oc new-project manifests
+oc create -f my-deployment.yaml
+vim my-deployment.yaml   --------  suppose humne edit kiya replicas increase kar diya 
+oc apply -f my-deployment.yaml    ------ now ye command se wo chal jayega 
+oc create -f my-deployment --dry-run=server
+Dry Run ka matlab hai:
+
+"Mujhe sirf check karke batao, actually resource create mat karo."
+Jaise exam me answer submit karne se pehle preview dekhte ho.
+
+Interview Question
+Q. Client aur Server Dry Run me difference?
+
+Answer:
+
+Client Dry Run sirf local machine par YAML aur command ki basic validation karta hai. API Server se connect nahi hota.
+Server Dry Run request ko OpenShift API Server tak bhejta hai aur wahan schema validation, RBAC, namespace, admission controllers, quotas aur policies sab check karta hai, lekin resource actually create nahi karta.
+
+oc create -f my-deployment --dry-run=client
