@@ -1,0 +1,52 @@
+Deploy jobs for one time tasks
+------------------------------
+
+oc create job one-time-tasks --dry-run=client -o yaml --image=bitnami/apache -- ls
+
+oc create job one-time-tasks --dry-run=client -o yaml --image=bitnami/apache -- ls > my-job.yaml
+
+oc create -f my-job.yaml
+oc get job
+---------------------Managing Application Deployments in Openshift ---------------------------------
+- Deployment stretegies
+- Rolling out updates
+- scaling deployments
+- Handling rollbacks
+
+apiVersion: apps/v1
+kind:Deployment
+metadata:
+   name: my-app
+spec:                         ----------- Yahan Deployment ki settings likhi jati hain.
+  replicas: 3
+  strategy:
+     type: RollingUpdates
+     rollingUpdate:
+          maxUnavailable: 25%
+          maxSurge: 25%
+  selector:
+     matchLabels:
+         app: my-app
+  template:
+     metadata:
+         labels:
+            app: my-app
+     spec:
+       containers:
+       - name: my-app-container
+         image: my-app-image:v1
+
+oc new-project deployment-demo
+more httpd-deployment.yaml
+oc apply -f httpd-deployment.yaml
+oc get all
+oc rollout status deployment/httpd-deployment
+oc rollout undo deployment/httpd-deployment --to-revision=1
+oc get pod
+oc rollout history deployment/httpd-deployment
+oc rollout history deployment/httpd-deployment --revision=2
+oc scale deployment/httpd-deployment --replicas=5
+
+oc describe deploymentffkfk998
+oc rollout pause deployment/httpd-deployment
+oc rollout resume deployment/httpd-deployment
