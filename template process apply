@@ -1,0 +1,355 @@
+oc get template httpd-example -n openshift -o yaml > httpd-example-template.yaml
+oc process httpd-example -n openshift NAME=frontend -l app=web -o yaml > httpd-example-resources.yaml | oc apply -f -
+
+oc new-app -f httpd-example-template.yaml -n openshift
+oc new-app --template=httpd-example
+
+
+-------------------------------------------------------------------------------------------------
+Bahut log Template aur Deployment YAML ko same samajhte hain, lekin dono alag hain.
+
+Deployment YAML
+kind: Deployment
+metadata:
+  name: frontend
+Isme sab values fix hoti hain.
+
+Template YAML
+kind: Template
+
+parameters:
+
+- name: NAME
+
+objects:
+
+- kind: Deployment
+  metadata:
+    name: ${NAME}
+Yahan ${NAME} ek variable hai. Jab aap oc process ya oc new-app chalate hain aur NAME=frontend dete hain, tab OpenShift ${NAME} ko frontend se replace karke actual Deployment, Service, Route jaise resources banata hai.
+
+Isliye:
+
+Template = Blueprint (parameterized definition)
+Processed Output = Actual Kubernetes/OpenShift resources
+
+------------------------------------------------------------------------------------------------------------------------------
+
+Suppose tum command chalate ho
+oc process httpd-example \
+-n openshift \
+NAME=frontend \
+-l app=web \
+-o yaml
+OpenShift ke andar ye steps hote hain.
+
+--------------------------------------------------
+
+Step 1
+
+OpenShift template dhoondta hai.
+
+openshift Namespace
+
+↓
+
+Template
+
+↓
+
+httpd-example
+
+Step 2
+
+Template ko memory me load karta hai.
+Template
+
+↓
+
+Read Complete YAML
+
+
+Step 3
+
+Parameter replace karta hai.
+
+Template me tha
+metadata:
+   name: ${NAME}
+Tumne diya
+
+NAME=frontend
+
+Ab OpenShift replace karega.
+
+Before
+metadata:
+   name: ${NAME}
+
+After
+
+metadata:
+   name: frontend
+
+Ye replacement har jagah hogi.
+
+Example
+
+Template
+
+Service
+
+name: ${NAME}
+
+Deployment
+
+name: ${NAME}
+
+Route
+
+name: ${NAME}
+
+After processing---------------
+
+Service
+
+name: frontend
+
+Deployment
+
+name: frontend
+
+Route
+
+name: frontend
+
+
+Step 4
+
+Ab
+kya karega?
+
+Ye har generated resource me label add karega.
+
+Before
+metadata:
+   name: frontend
+After
+metadata:
+
+   name: frontend
+
+   labels:
+
+      app: web
+
+Deployment me bhi
+
+Service me bhi
+
+Route me bhi
+
+ye label add ho jayega.
+
+
+Step 5
+Matlab
+
+Output YAML format me do.
+
+Output kuch aisa dikhega
+
+kind: Deployment
+
+metadata:
+
+  name: frontend
+
+  labels:
+
+      app: web
+
+----------------------
+
+kind: Service
+
+metadata:
+
+   name: frontend
+
+   labels:
+
+      app: web
+
+----------------------
+
+kind: Route
+
+metadata:
+
+   name: frontend
+
+   labels:
+
+      app: web
+
+Dhyan do.
+
+Ye sirf output hai.
+
+Abhi cluster me kuch create nahi hua.
+
+Check karo
+
+oc get deployment
+No resources found
+
+Real Flow
+            Template
+
+               |
+
+         ${NAME}
+
+               |
+
+        oc process
+
+               |
+
+Replace Variable
+
+               |
+
+NAME=frontend
+
+               |
+
+Deployment
+
+Service
+
+Route
+
+               |
+
+Print YAML
+
+Agar apply kar diya
+
+Suppose
+oc process httpd-example \
+NAME=frontend \
+| oc apply -f -
+
+Ab kya hoga?
+Template
+
+      |
+
+Process
+
+      |
+
+Generated YAML
+
+      |
+
+Pipe
+
+      |
+
+oc apply
+
+      |
+
+Deployment
+
+Service
+
+Route
+
+Pod
+
+
+Banking Example
+
+Suppose SBI me ek banking template bana hua hai.
+
+Uske andar
+
+Deployment
+
+Service
+
+Route
+
+PVC
+
+ConfigMap
+
+Secret
+
+sab hai.
+
+Aur Template me likha hai
+
+metadata:
+
+name: ${APP_NAME}
+
+Developer bolta hai
+Application Name = Internet Banking
+Admin chalata hai
+oc process banking-template \
+APP_NAME=internet-banking
+
+Ab generated YAML ban jayega
+
+Deployment
+
+name:
+
+internet-banking
+
+------------
+
+Service
+
+internet-banking
+
+------------
+
+Route
+
+internet-banking
+
+Developer ko manually edit nahi karna pada.
+
+
+
+oc process httpd-example \
+-n openshift \
+NAME=frontend \
+-l app=web \
+-o yaml
+
+| Part            | Matlab                                                   |
+| --------------- | -------------------------------------------------------- |
+| `oc`            | OpenShift CLI                                            |
+| `process`       | Template ko process (variable replace) karo              |
+| `httpd-example` | Template ka naam                                         |
+| `-n openshift`  | Template kis namespace me hai                            |
+| `NAME=frontend` | Template ke `${NAME}` variable ki value `frontend` rakho |
+| `-l app=web`    | Sab generated resources par `app=web` label add karo     |
+| `-o yaml`       | Output YAML format me dikhao                             |
+
+Memory Trick
+
+process ko compiler ki tarah socho:
+
+Template = Source Code
+oc process = Compile (variables replace karke final YAML banana)
+oc apply = Program execute karna (resources cluster me create/update karna)
+
+Is analogy se process aur apply ka difference hamesha yaad rahega.
