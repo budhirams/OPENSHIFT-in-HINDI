@@ -1,0 +1,73 @@
+Collect the default support data from your Openshift cluster , save it as a compressed tar archive named ex280-ocp-<clusterID>.tar.gz
+( where <cluserID > is your cluster's unique ID) using the tar crf command and upload it using the provided script 
+/usr/local/bin/upload-cluster-data ex280-ocp-<clusterID>.TAR.GZ; note that each upload will overwrite the previous one and multiple iploads are
+allowed.
+
+oc whoami
+oc whoami --show-console
+https://console-openshift-console.apps.ocp4.example.com
+
+home
+  cluster ID
+
+ls /usr/local/bin
+upload-cluster-data.sh
+oc adm must-gather
+ClusterID:b1d661ca-7fb3-42e2-968b80672189
+ls
+must-gather.local.47282764788477489
+du -sh  must-gather.local.47282764788477489
+tar -czf ex280-ocp-b1d661ca-7fb3-42e2-968b80672189.tar.gz must-gather.local.47282764788477489
+ls /usr/local/bin
+cp /usr/local/bin/upload-cluster-data.sh .
+./upload-cluster-data.sh ex280-ocp-b1d661ca-7fb3-42e2-968b80672189.tar.gz
+upload successful
+
+
+Must-Gather kya collect karta hai?
+Nodes
+
+Pods
+
+Deployments
+
+ReplicaSets
+
+Operators
+
+ClusterOperators
+
+Events
+
+Logs
+
+Secrets
+
+PVC
+
+PV
+
+Routes
+
+Ingress
+
+MachineConfig
+
+Network
+
+DNS
+
+Authentication
+
+Monitoring
+
+Image Registry
+
+Storage
+
+Namespaces
+
+Matlab
+Poore cluster ka health report.
+Folder banega
+must-gather.local.987654321
