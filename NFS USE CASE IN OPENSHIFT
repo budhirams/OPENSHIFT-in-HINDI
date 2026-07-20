@@ -1,0 +1,259 @@
+An NFS-backend storage class is already configured
+
+Using details from this storage class , create a PV with the following specifications:
+Name: "web-pv", Access Mode: "ReadOnlyMany",size "1Gi", Reclaim Policy: same as the storage class,path is:
+"/export-ocp4/page"
+
+Next , create a PVC with:
+Name: web-pvc,Size: same as the PV(1Gi),Access Mode: same as the PV (ReadOnlyMany)
+
+Deploy the application with thease requirements:
+
+It resides in a project named "webserver"
+Deployment name : web-landing
+Uses the image: registry.ocp4.example.com:8443/redhattraining/hello-world-nginx:v1.0
+
+Mount path for Nginx: /usr/share/nginx/html
+Replica count: 3
+Accessible at : https://exoplanets-declarative-manifests.apps.ocp4.example.com
+
+----------------------------------Approach--------------------------------------------------------------------
+web-pvc ko deployment me mount krna hai 
+
+we have nfs-storage , that dynamically provisioned PV
+If we have a dynamic storage class , then you dont need to make any PV for your application that will auto create 
+but in question asking to make a PV manually and use NFS storgae and mount a specific path from the NFS storage.
+
+------------------------------------------------------ ONE - CREATE DEPLOYMENT ---------------------------------------------------------
+first I decide to deploy the application 
+create Deployment
+   name
+      web-landing
+
+Image Name
+    registry.ocp4.example.com:8443/redhattraining/hello-world-nginx:v1.0
+
+----------------------------------------------------- TWO - CREATE SERVICE ----------------------------------------------------
+Networkin
+   services
+      create service
+apiVersion: v1
+kind: Service
+metadata:                  -------- ye object ki identity hoti hai
+   name: web-landing-svc
+   namespace: webserver
+spec:                     -------- yaha service ka behaviour define hota hai
+  selector:               ---service khud pod nhi banati hai wo pod ko select krti hai 
+      app: web-landing
+  ports:                  --- service kis port par traffic recieve kregi 
+    - protocol: TCP      TCP ( HTTP,HTTPS,SSH)
+      port: 80            --   ye service ka port rhata hai        http://web-landing-svc
+      targetPort: 8080    --- ye pod ke container ka port rahta hai 
+
+oc get endpoints web-landing-svc -n webserver
+NAME                       ENDPOINTS
+web-landing-svc          10.128.0.10:8080,10.128.0.11:8080
+ye batata hai ki service kin pods ko traffic bhej rha hai
+
+**************************************** EXPLANATION *****************************************************************************************
+
+Question: port aur targetPort me kya difference hai ?
+Answer:
+port: service ka port hota hai, jaha client request send krta hai 
+target port: Container/pod ka actual port hota hai , jaha application listen kar rhi hoti hai 
+
+suppose SBI internet banking application hai
+-----------------------------------------------
+customer
+  I
+internet
+  I
+F5 load balancer (VIP--means virtual ip)
+  I
+openshift Router (Ingress)
+  I
+openshift service
+  I
+pods
+
+Load balancer (f5) - bahar se ane wali request recieve krta hai
+openshift router - route ke basis par service tak request bhejta hai
+service - pods me load balance krti hai 
+
+Production banking me F5 ya network load balancer network team configure karti hai 
+openshift admin sirf route create karta hai 
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata: 
+   name: banking-route 
+spec:
+   host: banking.sbi.com
+   to:
+    kind: service
+    name: web-landing-svc
+
+agar request banking.sbi.com ke liye aaye to web-landing-svc service ko bhejo
+
+Request ka complete flow
+---------------------------------
+customer browser me type karta hai 
+https://banking.sbi.com
+
+DNS
+banking.sbi.com
+|
+10.10.10.100
+ye F5 ka VIP hai
+
+ab 
+customer
+|
+vip (10.10.10.100)
+|
+router
+|
+route
+|
+service
+|
+pod1
+
+ya 
+
+pod2
+
+
+ya
+
+pod3
+
+Question: Agar F5 already load balancing kar rha hai , to service ki kya jarurat hai ?
+Answer:
+F5 sirf Openshift tak traffic bhejta hai , Router route ke basis pe request ko service tak pahuchata hai ,service cluster ke andar pods
+ko discover karti hai aur unke beech load balancing karti hai , esiliye F5 aur service dono alag level pe kaam karten hai 
+
+
+agar External LB aur Internal LB dono ho
+----------------------------------------------
+customer 
+ |
+External Load balancer
+ |
+ |443
+ |
+Internal Load Balancer
+ |
+ |8443
+ |
+openshift router
+ |
+service
+ |
+Pod
+
+External load balancer Internet  se traffic leta hai
+Internal load balancer sirf data center ke andar traffic distribute krta hai
+
+***************************************************************************************************************************************************
+
+------------------------------------------------- THREE - CREATE ROUTE ----------------------------------------------------------------------------
+
+Networking
+   Routes
+      create routes
+          Name
+           web-landing-router
+          Hostname
+             exoplanets-declarative-manifests.apps.ocp4.example.com
+          Service
+             web-landing-svc
+          Target port
+            80 --> 8080 (TCP)
+          Secure Route
+
+ok , the route is ready , lets try to access it from browser , yes it is working 
+However , we actually need to replace this default page with the index.html , that is loacated in NFS server
+
+
+They are asking us to create a PV and PVC from the storage  
+
+Actually If any PV is available in the exam environment you can get all the details by simply inspecting the YAML files, However In most 
+cases there will not be any existing PV in exam environment .
+
+So approach will be
+simple I will create a test PVC , since it is dynamic storage class , it will automatically create a PV and from that we can easily 
+get the NFS server and export path details
+
+
+Create PersistentVolumeClaim
+-------------------------------------------
+
+PersistentVolumeClaim name
+   testpvc
+access Mode
+
+size
+1Gi
+
+volume mode 
+Filesystem
+
+Ok we have create a test PVC and immediately it is bounded to a PV.
+so lets check detail in PV , ok this is PV which is autometically created by storage class.
+here we can see the NFS server IP and export path.
+
+So now we have all details for creating the PVC like IP address,export path and reclaim policy , this is enough to solving this question
+
+lets go to dublicate TAB
+go to the PV section 
+create a PV 
+    select yaml
+        apiVersion: v1
+        kind: PersistentVolume
+        metadata:
+            name: web-pv
+        spec:
+          capacity:
+              storage: 1Gi
+          accessModes:
+             - ReadOnlyMany
+          persistentVolumeReclaimPolicy: Delete
+          storageClassName: nfs-storage
+          volumeMode: Filesystem        --------------------- added only extra byself
+          nfs:
+            path: /exports-ocp4/page
+            server: 192.168.50.254
+
+lets create pvc
+project: webserver
+   create persistent volume claim
+        edit YAML
+           apiVersion: v1
+           kind: PersistentVolumeClaim
+           metadata:
+              name: web-pvc
+              namespace: webserver
+           spec:
+              accessModes:
+                 - ReadOnlyMany
+              volumeMode: Filesystem
+              storageClassName: nfs-storage
+              resources:
+                  requests:
+                     storage: 1Gi
+
+----------------------------------------------- FOUR - add the storage --------------------------------------------------- 
+Next we need to cosume this PVC from our deployment 
+so go to our web landing deployment and add the storage
+                  
+Deployments
+   3 dots
+      Add storage
+         Use existing claim
+             select claim
+                web-pvc
+      mount path
+         /usr/share/nginx/html
+
+
+------------------------------------------------ FIVE - routes -------------------------------------------------------------
